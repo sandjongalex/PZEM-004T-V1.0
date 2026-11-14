@@ -3,6 +3,7 @@
 #define PZEM_TIMEOUT 500
 
 #define MODBUS_READ_INPUT 0x04
+#define MODBUS_RESET_ENERGY 0x42
 
 #define PZEM_FIRST_REGISTER 0x0000
 #define PZEM_REGISTER_COUNT 10
@@ -174,6 +175,83 @@ bool PZEM004T_V1::readRegisters(
 
   _error = PZEM_OK;
 
+  return true;
+}
+
+// Envoie 0x42 et verifie la reponse du module (4 octets ou 5 en exception).
+// Les CRC Modbus sont transmis octet faible en premier.
+bool PZEM004T_V1::resetEnergy() {
+
+  uint8_t request[4] = {_address, MODBUS_RESET_ENERGY, 0, 0};
+  uint16_t crc = calculateCRC(request, 2);
+  request[2] = crc & 0xFF;
+  request[3] = crc >> 8;
+
+  while (_serial->available()) {
+    _serial->read();
+  }
+
+  _serial->write(request, sizeof(request));
+
+  uint8_t response[5] = {0};
+  uint8_t count = 0;
+  unsigned long startTime = millis();
+
+  while (millis() - startTime < PZEM_TIMEOUT) {
+    if (_serial->available()) {
+      response[count++] = _serial->read();
+
+      if (count >= 2) {
+        uint8_t expectedLength = (response[1] & 0x80) ? 5 : 4;
+        if (count >= expectedLength) {
+          break;
+        }
+      }
+
+      if (count >= sizeof(response)) {
+        break;
+      }
+    }
+  }
+
+  if (count == 0) {
+    _error = PZEM_ERROR_TIMEOUT;
+    return false;
+  }
+
+  if (count < 4 ||
+      count != ((response[1] & 0x80) ? 5 : 4)) {
+    _error = PZEM_ERROR_FRAME;
+    return false;
+  }
+
+  uint16_t receivedCRC =
+    response[count - 2] |
+    ((uint16_t)response[count - 1] << 8);
+
+  if (receivedCRC != calculateCRC(response, count - 2)) {
+    _error = PZEM_ERROR_CRC;
+    return false;
+  }
+
+  if (response[0] != _address) {
+    _error = PZEM_ERROR_ADDRESS;
+    return false;
+  }
+
+  if (response[1] == (MODBUS_RESET_ENERGY | 0x80)) {
+    _error = PZEM_ERROR_EXCEPTION;
+    return false;
+  }
+
+  if (response[1] != MODBUS_RESET_ENERGY) {
+    _error = PZEM_ERROR_FUNCTION;
+    return false;
+  }
+
+  // Ne pas toucher aux autres grandeurs mesurees.
+  _data.energyWh = 0.0f;
+  _error = PZEM_OK;
   return true;
 }
 

@@ -39,6 +39,10 @@ public:
 
   bool read();
 
+  // Remet a zero l'energie cumulee dans le PZEM (operation destructive).
+  // Retourne true seulement apres l'accuse de reception Modbus valide.
+  bool resetEnergy();
+
   PZEMData getData();
 
   float voltage();

@@ -1,6 +1,6 @@
 # PZEM004T_V1 — Bibliothèque Arduino
 
-**Version 0.1.0** — Bibliothèque Arduino destinée à lire les mesures électriques du module **PZEM-004T-100A-D-P V1.0** au moyen de **Modbus-RTU**. Cette version fournit les six grandeurs électriques, l'état de l'alarme et les erreurs de communication ; elle ne prend pas en charge plusieurs modules, la remise à zéro de l'énergie ni la modification de l'adresse Modbus du module.
+**Version 0.2.0** — Bibliothèque Arduino destinée à lire les mesures électriques du module **PZEM-004T-100A-D-P V1.0** au moyen de **Modbus-RTU**. Cette version fournit les six grandeurs électriques, l'état de l'alarme, la remise à zéro du compteur d'énergie par commande `0x42` et les erreurs de communication. Elle ne prend pas en charge plusieurs modules ni la modification de l'adresse Modbus du module.
 
 ## Matériel et protocole
 
@@ -81,6 +81,22 @@ void loop() {
 
 L'exemple complet se trouve dans [`examples/Monitoring/Monitoring.ino`](examples/Monitoring/Monitoring.ino). Ouvrir le moniteur série à **115200 bauds**.
 
+## Remise à zéro de l'énergie
+
+La fonction `bool resetEnergy()` envoie la commande Modbus `0x42` au PZEM, contrôle le CRC et la réponse du module, puis met à jour la valeur d'énergie en mémoire **uniquement en cas de succès**. Elle remet à zéro le **compteur interne du module**, pas seulement l'affichage Arduino. Les autres mesures ne sont pas réinitialisées. Cette commande doit être prise en charge par le matériel installé (les anciennes variantes non-Modbus ne sont pas compatibles).
+
+**Attention :** l'effacement est irréversible pour le compteur du PZEM. Sauvegarder l'énergie nécessaire à l'historique avant de l'exécuter ; ne pas appeler cette fonction automatiquement dans `setup()`.
+
+```cpp
+if (pzem.resetEnergy()) {
+  Serial.println("Compteur d'energie remis a zero");
+} else {
+  Serial.println(pzem.getErrorMessage());
+}
+```
+
+L'exemple [`examples/ResetEnergy/ResetEnergy.ino`](examples/ResetEnergy/ResetEnergy.ino) permet d'envoyer **R** depuis le moniteur série (115200 bauds) pour déclencher volontairement l'effacement. La réponse `0xC2` du module est traitée comme une erreur Modbus.
+
 ## Gestion des erreurs
 
 | Valeur de `PZEMError` | Message fourni par la bibliothèque | Signification |
@@ -95,14 +111,12 @@ L'exemple complet se trouve dans [`examples/Monitoring/Monitoring.ino`](examples
 
 La méthode `getError()` renvoie le code, et `getErrorMessage()` renvoie le texte correspondant.
 
-## Feuille de route (non implémentée dans la version 0.1.0)
+## Feuille de route
 
-- **0.2 :** améliorations des erreurs et des délais.
-- **0.3 :** gestion multi-PZEM.
-- **0.4 :** remise à zéro de l'énergie.
-- **1.0 :** documentation, tests et publication.
-
-Ces éléments sont indiqués à titre de feuille de route, sans être inclus dans cette version.
+- **0.2.0 :** remise à zéro de l'énergie via `resetEnergy()` (implémentée).
+- **0.3 :** améliorations des erreurs, des délais et tests complémentaires.
+- **0.4 :** gestion multi-PZEM.
+- **1.0 :** stabilisation et publication.
 
 ## Sécurité électrique
 

@@ -9,6 +9,7 @@ current	KEYWORD2
 power	KEYWORD2
 energyWh	KEYWORD2
 energyKWh	KEYWORD2
+resetEnergy	KEYWORD2
 frequency	KEYWORD2
 powerFactor	KEYWORD2
 alarm	KEYWORD2
