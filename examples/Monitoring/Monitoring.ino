@@ -6,7 +6,9 @@
 
 SoftwareSerial pzemSerial(PZEM_RX, PZEM_TX);
 
-PZEM004T_V1 pzem(pzemSerial, 0x01);
+// Adresse generale 0xF8 : pour UN SEUL module PZEM sur la liaison.
+// Pour plusieurs PZEM, utiliser l'adresse Modbus specifique de chacun.
+PZEM004T_V1 pzem(pzemSerial, 0xF8);
 
 void setup() {
 

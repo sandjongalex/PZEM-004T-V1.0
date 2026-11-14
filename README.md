@@ -8,7 +8,8 @@
 - **Microcontrôleur :** ATmega328P (Arduino Uno, architecture `avr`).
 - **Liaison :** UART logiciel via `SoftwareSerial`, **9600 bauds**.
 - **Protocole :** Modbus-RTU, lecture des registres d'entrée par la fonction `0x04` (**10 registres** à partir de `0x0000`).
-- **Adresse utilisée dans l'exemple :** `0x01`.
+- **Adresse utilisée dans les exemples :** `0xF8`, adresse générale Modbus (un seul PZEM connecté). Si le module est configuré avec une adresse spécifique, cette adresse (`0x01` à `0xF7`) peut également être utilisée.
+- **Attention aux noms de versions :** la carte `PZEM-004T-100A-D-P(V1.0)` utilise Modbus, contrairement à l'ancien PZEM-004T V1 historique qui utilise un protocole série différent.
 
 ## Mesures disponibles
 
@@ -31,6 +32,9 @@ Une lecture réussie renseigne `PZEMData.valid` à `true`. En cas d'échec, les 
 | TX | D10 — RX de `SoftwareSerial` |
 | RX | D11 — TX de `SoftwareSerial` |
 | GND | GND — masse commune |
+| 5V | 5V — alimentation de l'interface de communication TTL, si le module possède cette broche |
+
+Pour la variante à 5 broches `5V / RX / TX / CF / GND`, ne pas raccorder `CF` pour ces exemples. Le module doit aussi être alimenté correctement côté mesure selon sa notice ; les broches 5V et GND **ne remplacent pas** l'alimentation du circuit de mesure.
 
 Respecter l'alimentation et les niveaux électriques spécifiés pour la version du module utilisée. Vérifier le brochage réel avant tout raccordement.
 
@@ -47,7 +51,7 @@ Respecter l'alimentation et les niveaux électriques spécifiés pour la version
 #include <PZEM004T_V1.h>
 
 SoftwareSerial pzemSerial(10, 11); // RX, TX
-PZEM004T_V1 pzem(pzemSerial, 0x01);
+PZEM004T_V1 pzem(pzemSerial, 0xF8); // adresse generale, un seul PZEM
 
 void setup() {
   Serial.begin(115200);
@@ -80,6 +84,18 @@ void loop() {
 ```
 
 L'exemple complet se trouve dans [`examples/Monitoring/Monitoring.ino`](examples/Monitoring/Monitoring.ino). Ouvrir le moniteur série à **115200 bauds**.
+
+## Diagnostic en cas de Timeout
+
+Si `pzem.read()` retourne `Timeout`, tester **d'abord** l'exemple `Monitoring` avec l'adresse générale `0xF8` avant toute remise à zéro d'énergie. Vérifier ensuite, alimentation coupée avant manipulation :
+
+1. TX du PZEM connecté à RX de l'Arduino (D10) ; RX du PZEM connecté à TX de l'Arduino (D11).
+2. 5V et GND de l'interface TTL correctement alimentés et reliés (l'interface ne peut pas communiquer sans eux).
+3. Circuit de mesure du PZEM correctement alimenté selon la notice et les protections électriques applicables (l'USB de l'Arduino seul ne suffit pas à alimenter le circuit de mesure).
+4. Vitesse `9600` bauds pour le PZEM ; moniteur série de l'IDE Arduino à `115200` bauds.
+5. Si l'adresse `0xF8` ne fonctionne pas, confirmer le modèle exact et tester l'équipement et ses connexions avant de changer la bibliothèque.
+
+Une indication `V1.0` sur la carte `PZEM-004T-100A-D-P(V1.0)` n'implique **pas** le protocole de l'ancienne génération V1 du PZEM-004T.
 
 ## Remise à zéro de l'énergie
 
